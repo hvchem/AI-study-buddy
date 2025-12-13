@@ -2,7 +2,6 @@ from typing import List, Dict
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 from app.core.config import settings
-from app.services.embedding_service import embedding_service
 
 
 class LLMService:
@@ -140,6 +139,9 @@ class LLMService:
         Returns:
             Dictionary with answer and sources
         """
+        # Import here to avoid circular dependency
+        from app.services.embedding_service import embedding_service
+        
         # Retrieve relevant chunks
         search_results = embedding_service.search(
             query=question,

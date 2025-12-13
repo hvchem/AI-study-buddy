@@ -5,7 +5,6 @@ pydantic==2.5.3
 pydantic-settings==2.1.0
 
 # PDF processing
-PyPDF2==3.0.1
 pypdf==4.0.1
 
 # ML and embeddings

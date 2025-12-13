@@ -4,11 +4,11 @@ Test script to verify AI Study Buddy basic functionality.
 This script tests the core components without requiring the full API to be running.
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.services.pdf_processor import PDFProcessor
 from app.core.config import settings

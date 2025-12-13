@@ -17,6 +17,7 @@ class EmbeddingService:
         self.index: Optional[faiss.Index] = None
         self.document_chunks: Dict[str, List[str]] = {}
         self.chunk_to_doc: Dict[int, str] = {}
+        self.doc_start_idx: Dict[str, int] = {}  # Cache for document start indices
         self._initialized = False
     
     def _initialize(self):
@@ -44,6 +45,7 @@ class EmbeddingService:
                     metadata = pickle.load(f)
                     self.document_chunks = metadata.get("document_chunks", {})
                     self.chunk_to_doc = metadata.get("chunk_to_doc", {})
+                    self.doc_start_idx = metadata.get("doc_start_idx", {})
                 print(f"Loaded existing FAISS index with {self.index.ntotal} vectors")
             except Exception as e:
                 print(f"Error loading index: {e}. Creating new index.")
@@ -58,6 +60,7 @@ class EmbeddingService:
         self.index = faiss.IndexFlatL2(dimension)
         self.document_chunks = {}
         self.chunk_to_doc = {}
+        self.doc_start_idx = {}
         print(f"Created new FAISS index with dimension {dimension}")
     
     def _save_index(self):
@@ -70,7 +73,8 @@ class EmbeddingService:
         with open(metadata_file, "wb") as f:
             pickle.dump({
                 "document_chunks": self.document_chunks,
-                "chunk_to_doc": self.chunk_to_doc
+                "chunk_to_doc": self.chunk_to_doc,
+                "doc_start_idx": self.doc_start_idx
             }, f)
         print(f"Saved FAISS index with {self.index.ntotal} vectors")
     
@@ -112,6 +116,7 @@ class EmbeddingService:
         
         # Update metadata
         self.document_chunks[document_id] = chunks
+        self.doc_start_idx[document_id] = start_idx
         for i, chunk in enumerate(chunks):
             self.chunk_to_doc[start_idx + i] = document_id
         
@@ -161,20 +166,20 @@ class EmbeddingService:
             if document_id and doc_id != document_id:
                 continue
             
-            chunk_text = self.document_chunks.get(doc_id, [])[idx - self._get_doc_start_idx(doc_id)]
-            results.append((chunk_text, float(dist), doc_id))
+            # Calculate the chunk index within the document
+            doc_start = self.doc_start_idx.get(doc_id, 0)
+            chunk_idx = idx - doc_start
+            
+            # Safely get the chunk text
+            chunks = self.document_chunks.get(doc_id, [])
+            if 0 <= chunk_idx < len(chunks):
+                chunk_text = chunks[chunk_idx]
+                results.append((chunk_text, float(dist), doc_id))
             
             if len(results) >= top_k:
                 break
         
         return results
-    
-    def _get_doc_start_idx(self, document_id: str) -> int:
-        """Get the starting index of a document in the FAISS index."""
-        for idx, doc_id in self.chunk_to_doc.items():
-            if doc_id == document_id:
-                return idx
-        return 0
     
     def get_document_chunks(self, document_id: str) -> List[str]:
         """

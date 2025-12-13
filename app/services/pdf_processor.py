@@ -1,7 +1,7 @@
 import os
 import uuid
 from typing import List, Tuple
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 from app.core.config import settings
 
 
