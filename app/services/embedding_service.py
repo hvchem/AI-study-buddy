@@ -1,6 +1,6 @@
 import os
 import pickle
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import faiss
@@ -12,12 +12,18 @@ class EmbeddingService:
     
     def __init__(self):
         self.model_name = settings.embedding_model
-        self.model = None
+        self.model: Optional[SentenceTransformer] = None
         self.index_path = settings.faiss_index_path
-        self.index = None
+        self.index: Optional[faiss.Index] = None
         self.document_chunks: Dict[str, List[str]] = {}
         self.chunk_to_doc: Dict[int, str] = {}
-        self._load_or_create_index()
+        self._initialized = False
+    
+    def _initialize(self):
+        """Initialize the service (lazy loading)."""
+        if not self._initialized:
+            self._load_or_create_index()
+            self._initialized = True
     
     def _load_model(self):
         """Load the sentence transformer model."""
@@ -90,6 +96,8 @@ class EmbeddingService:
             document_id: Unique document identifier
             chunks: List of text chunks from the document
         """
+        self._initialize()
+        
         if not chunks:
             return
         
@@ -123,6 +131,8 @@ class EmbeddingService:
         Returns:
             List of tuples (chunk_text, distance, doc_id)
         """
+        self._initialize()
+        
         if self.index.ntotal == 0:
             return []
         
@@ -176,6 +186,7 @@ class EmbeddingService:
         Returns:
             List of chunks
         """
+        self._initialize()
         return self.document_chunks.get(document_id, [])
 
 
