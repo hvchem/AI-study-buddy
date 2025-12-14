@@ -1,8 +1,13 @@
 from fastapi import APIRouter, UploadFile, File
 from backend.utils.pdf_reader import extract_text_from_pdf
 from backend.utils.text_chunker import clean_text, chunk_text
+from backend.services.embeddings import EmbeddingService
+from backend.services.vector_store import VectorStore   
 
 router = APIRouter()
+
+embedding_service = EmbeddingService()
+vector_store = VectorStore(embedding_dim=384)
 
 @router.post("/upload-pdf")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -29,9 +34,15 @@ async def upload_pdf(file: UploadFile = File(...)):
     # Split text into overlapping chunks
     chunks = chunk_text(cleaned_text)
     
+    # Convert chunks to embeddings
+    embeddings = embedding_service.embed_texts(chunks)
+
+
+    # Store in FAISS
+    vector_store.add(embeddings, chunks)
 
     return {
         "filename": file.filename,
-        "text_chunks": len(chunks),
-        "sample_chunk": chunks[0][:300] if chunks else ""
+        "num_chunks": len(chunks),
+        "status":  "indexed successfully"
     }
