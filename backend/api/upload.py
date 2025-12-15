@@ -1,13 +1,10 @@
 from fastapi import APIRouter, UploadFile, File
 from backend.utils.pdf_reader import extract_text_from_pdf
 from backend.utils.text_chunker import clean_text, chunk_text
-from backend.services.embeddings import EmbeddingService
-from backend.services.vector_store import VectorStore   
 
+from backend.core.state import embedding_service, vector_store
 router = APIRouter()
 
-embedding_service = EmbeddingService()
-vector_store = VectorStore(embedding_dim=384)
 
 @router.post("/upload-pdf")
 async def upload_pdf(file: UploadFile = File(...)):
