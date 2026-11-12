@@ -1,8 +1,10 @@
-fastapi
+fastapi[standard]
 uvicorn
 transformers
 torch
 sentence-transformers
-faiss-cpu
+faiss-gpu
 pymupdf
 python-multipart
+bitsandbytes
+accelerate

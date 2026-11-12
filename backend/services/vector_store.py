@@ -1,27 +1,29 @@
 import faiss
 import numpy as np
-from typing import List
+from typing import List, Dict
 
 class VectorStore:
-    """
-    FAISS-based vector store for similarity search.
-    """
-
     def __init__(self, embedding_dim: int):
-        # L2 distance index (simple and effective)
         self.index = faiss.IndexFlatL2(embedding_dim)
         self.text_chunks: List[str] = []
+        self.metadata: List[Dict] = []
 
-    def add(self, embeddings: np.ndarray, chunks: List[str]):
-        """
-        Add embeddings and corresponding text chunks to the index.
-        """
+    def add(self, embeddings: np.ndarray, chunks: List[str], source: str = "unknown"):
         self.index.add(embeddings)
+        for chunk in chunks:
+            self.metadata.append({"source": source})
         self.text_chunks.extend(chunks)
 
     def search(self, query_embedding: np.ndarray, top_k: int = 3):
-        """
-        Search for the most relevant chunks.
-        """
+        if self.index.ntotal == 0:
+            return []
         distances, indices = self.index.search(query_embedding, top_k)
-        return [self.text_chunks[i] for i in indices[0]]
+        results = []
+        for i, idx in enumerate(indices[0]):
+            if idx < len(self.text_chunks):
+                results.append({
+                    "text": self.text_chunks[idx],
+                    "source": self.metadata[idx]["source"],
+                    "score": float(distances[0][i])
+                })
+        return results

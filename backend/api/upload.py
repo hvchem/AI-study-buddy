@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, HTTPException
 from backend.utils.pdf_reader import extract_text_from_pdf
 from backend.utils.text_chunker import clean_text, chunk_text
 
@@ -7,39 +7,33 @@ router = APIRouter()
 
 
 @router.post("/upload-pdf")
-async def upload_pdf(file: UploadFile = File(...)):
-    """
-    Upload a PDF file and process it.
+def upload_pdf(file: UploadFile = File(...)):
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
-    Steps:
-    1. Read PDF file bytes
-    2. Extract raw text
-    3. Clean the text
-    4. Split text into chunks
+    file_bytes = file.file.read()
 
-    Returns metadata for validation.
-    """
-    # Read uploaded file as bytes
-    file_bytes = await file.read()
+    if len(file_bytes) == 0:
+        raise HTTPException(status_code=400, detail="File is empty")
 
-    # Extract text from PDF
-    raw_text = extract_text_from_pdf(file_bytes)
+    if len(file_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
 
-    # Clean extracted text
+    try:
+        raw_text = extract_text_from_pdf(file_bytes)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not read PDF. File may be corrupt or invalid.")
+
+    if not raw_text.strip():
+        raise HTTPException(status_code=400, detail="PDF contains no extractable text")
+
     cleaned_text = clean_text(raw_text)
-
-    # Split text into overlapping chunks
     chunks = chunk_text(cleaned_text)
-    
-    # Convert chunks to embeddings
     embeddings = embedding_service.embed_texts(chunks)
-
-
-    # Store in FAISS
-    vector_store.add(embeddings, chunks)
+    vector_store.add(embeddings, chunks, source=file.filename)
 
     return {
         "filename": file.filename,
         "num_chunks": len(chunks),
-        "status":  "indexed successfully"
+        "status": "indexed successfully"
     }
